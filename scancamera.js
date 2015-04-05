@@ -29,15 +29,19 @@ app.get('/', function (req, res) {
 
 
 app.get('/preview/', function (req, res) {
-  res.send('starting scan at lowest definition for preview!');
-
-  //TODO : call here whatever logic is needed for a scan
-
+  if(cameralogic.snap(cameralogic.definitions.uld)){
+    res.send('starting scan at preview definition!');
+    
+  }else{
+    res.send('cannot scan yet, the camera is already in use !');
+    
+  }
 
 })
 
 app.get('/snap/', function (req, res) {
-  if(cameralogic.snap(cameralogic.SD)){
+  console.log('snap called');
+  if(cameralogic.snap(cameralogic.definitions.sd)){
     res.send('starting scan at standard definition!');
     
   }else{
@@ -49,9 +53,20 @@ app.get('/snap/', function (req, res) {
 })
 
 app.get('/snap/:definition', function (req, res) {
-  res.send('starting scan!');
-
-  //TODO : call here whatever logic is needed for a scan
+  console.log(req);
+  console.log('snap called with definition');
+  if(cameralogic.definitions[req.params.definition]){
+    if( cameralogic.snap(cameralogic.definitions[req.params.definition]) ) {
+      res.send('starting scan at specific definition!');
+      
+    }else{
+      res.send('cannot scan yet, the camera is already in use !');
+      
+    }
+    
+  }else{
+    res.send('cannot scan, definition is unknown');
+  }
 
 
 
@@ -82,6 +97,9 @@ app.get('/raw/:id', function (req, res) {
 app.get('/picture/last', function (req, res) {
   res.send('the last picture!');
 
-  //TODO : return here the last pictures taken
+  //just send the image with name = nbclick-1
+
+  
+
 
 })
