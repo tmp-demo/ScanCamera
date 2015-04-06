@@ -56,11 +56,17 @@ fs.readdir( './raw', function(err, list) {
 });
 
 
+exports.getClickNB = function(){
+  return clickNB;
+}
+
+exports.getLastPictureFilename = function(){
+  return '/img'+(clickNB-1)+'.jpg';
+}
 
 
-
-exports.snap = function (definition){
-	return scan(definition);
+exports.snap = function (definition, response){
+	return scan(definition, response);
 }
 
 
@@ -71,13 +77,17 @@ exports.preview = function (){
 
 
 
-function scan(definition){
+function scan(definition, response){
   console.log('scan called');
+  console.log("response = " +response)
 	if(!cameraInUse){
+
+    response.write('scan commencing');
+
 		cameraInUse=true;
 		var imageIndex = clickNB;
 
-    var scanProcess  = spawn('scanimage', ['-x', '200', '-y', '200', '-l', '5', '-t', '55', '--format=tiff', '--resolution='+definition]);
+    var scanProcess  = spawn('scanimage', ['-p','-x', '200', '-y', '200', '-l', '5', '-t', '55', '--format=tiff', '--resolution='+definition]);
 
     fs.writeFile('./raw/img'+imageIndex+'.tiff','',function(){
       console.log('file initiated');
@@ -86,16 +96,39 @@ function scan(definition){
 
     scanProcess.stdout.on('data', function(data){
       fs.appendFile('./raw/img'+imageIndex+'.tiff', data, function(){
-        console.log('worte chunk');
+        //response.write('acquiering image');
+        //console.log('worte chunk');
       })
     });
 
     scanProcess.stderr.on('data', function(data){
-        console.log('' + data);
+        response.write(data);
       })
 
+    //scanProcess.stdout.pipe(response);
 
-    scanProcess.on('close', function(code,signal){
+    var convertProcess =  spawn('convert', ['tiff:-','-quality','60', './pictures/img'+imageIndex+'.jpg']);
+    scanProcess.stdout.pipe(convertProcess.stdin);
+
+    //convertProcess.stdout.pipe(response);
+
+    convertProcess.on('close', function(code,signal){
+        console.log("convert done");
+        console.log(arguments)
+        //scanned ended 
+        response.write('scan done, you can acess image at <a href="img'+clickNB+'.jpg">"img'+clickNB+'.jpg"</a>');
+        
+        clickNB++;
+
+        cameraInUse = false;
+
+
+        response.end();
+
+      });
+
+
+    /*scanProcess.on('close', function(code,signal){
       console.log("scan done");
 
       var convertProcess =  spawn('convert', ['-quality','60', './raw/img'+imageIndex+'.tiff', './pictures/img'+imageIndex+'.jpg'])
@@ -114,6 +147,7 @@ function scan(definition){
 
       });
     });
+    */
 
 		return true;
 	}else{
