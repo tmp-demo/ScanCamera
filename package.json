@@ -12,7 +12,8 @@
   },
   "author": "Gaël \"Gruck\" Motte",
   "license": "MIT",
-  "dependencies": {
+  "dependencies": {    
+    "socket.io": "latest",
     "express": "~4.12.3"
   }
 }

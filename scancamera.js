@@ -1,7 +1,7 @@
 var express = require('express');
 var fs = require('fs');
 var cameralogic = require('./cameralogic');
-
+var http =  require('http');
 
 
 var app = express()
@@ -14,12 +14,15 @@ var server = app.listen(3000, function () {
 
   console.log('Example app listening at http://%s:%s', host, port)
 
-})
+});
+
+var io = require('socket.io').listen(server);
 
 
 app.use(express.static('public'));
 app.use(express.static('pictures'));
 app.use(express.static('raw'));
+
 
 
 // respond with "Hello World!" on the homepage
@@ -53,13 +56,10 @@ app.get('/snap/', function (req, res) {
 })
 
 app.get('/snap/:definition', function (req, res) {
-  console.log(req);
   console.log('snap called with definition');
   if(cameralogic.definitions[req.params.definition]){
     if( cameralogic.snap(cameralogic.definitions[req.params.definition], res) ) {
-      //res.send('starting scan at specific definition!');
-      console.log('starting scan at specific definition!');
-      
+      console.log('starting scan at specific definition!');    
     }else{
       res.send('cannot scan yet, the camera is already in use !');
       
@@ -72,6 +72,38 @@ app.get('/snap/:definition', function (req, res) {
 
 
 })
+
+
+io.sockets.on('connection', function (socket) {
+  console.log('client attempting to connect');
+  socket.emit('status', { status: 'connected', message: 'connection established' });
+  socket.on('snap', function ( data ) {
+    //data should contain the requiered definition .
+    var definition = cameralogic.definitions.sd;
+    if(data && data.definition && cameralogic.definitions[data.definition]){
+      definition = cameralogic.definitions[data.definition];
+    }
+
+   
+    if(cameralogic.snap(
+          cameralogic.definitions.sd
+          , function(progress, preview){
+              console.log('progress : '+ progress);
+              socket.emit('status', { status : "progress", progress : progress, imagedata : preview } );
+            }
+          , function(imagename, preview){
+              console.log('done : '+ imagename);
+              socket.emit('status', { status : "done",  imagname : imagename , imagedata : "image data for the whole image !"} );
+            }
+        )
+    ){
+      console.log('starting scan at definition : ' + definition); 
+      socket.emit('status' , { status : "initializing"});
+    }else{
+      socket.emit('status', { status: 'fail', message: 'Cannot scan yet, the camera is already in use !'});
+    }
+  });
+});
 
 
 app.get('/collection', function (req, res) {

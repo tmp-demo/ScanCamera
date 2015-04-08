@@ -65,8 +65,8 @@ exports.getLastPictureFilename = function(){
 }
 
 
-exports.snap = function (definition, response){
-	return scan(definition, response);
+exports.snap = function (definition, progress, done){
+	return scan(definition, progress, done);
 }
 
 
@@ -77,12 +77,15 @@ exports.preview = function (){
 
 
 
-function scan(definition, response){
+function scan(definition, progress, done){
   console.log('scan called');
-  console.log("response = " +response)
+
+
+
+
 	if(!cameraInUse){
 
-    response.write('scan commencing');
+    console.log('scan commencing');
 
 		cameraInUse=true;
 		var imageIndex = clickNB;
@@ -96,58 +99,51 @@ function scan(definition, response){
 
     scanProcess.stdout.on('data', function(data){
       fs.appendFile('./raw/img'+imageIndex+'.tiff', data, function(){
-        //response.write('acquiering image');
-        //console.log('worte chunk');
       })
     });
 
-    scanProcess.stderr.on('data', function(data){
-        response.write(data);
-      })
 
-    //scanProcess.stdout.pipe(response);
+    var progressIndex = 1;
+    var progressStep = 10;
+
+
+    scanProcess.stderr.on('data', function(data){
+        //progress is written to stderr.
+        //let's process it to strip useless text and send it to the progress callbak
+        var regex = new RegExp("Progress: (\\d+)\..%");
+
+        var matches = (""+data).match(regex);
+        if( matches ) {
+            var progresspercentage = parseInt(matches[1]);
+            if(progresspercentage >= progressIndex * progressStep){
+              //consider trying to stream | convert the unfinished file every 10%
+              progress(progresspercentage, progressIndex * progressStep);
+              console.log("reached progress threshold")
+              progressIndex++;
+            }else{
+              progress(matches[1], null);
+            }
+        }
+      });
+
 
     var convertProcess =  spawn('convert', ['tiff:-','-quality','60', './pictures/img'+imageIndex+'.jpg']);
     scanProcess.stdout.pipe(convertProcess.stdin);
 
-    //convertProcess.stdout.pipe(response);
 
     convertProcess.on('close', function(code,signal){
         console.log("convert done");
-        console.log(arguments)
+
         //scanned ended 
-        response.write('scan done, you can acess image at <a href="img'+clickNB+'.jpg">"img'+clickNB+'.jpg"</a>');
         
         clickNB++;
 
         cameraInUse = false;
 
-
-        response.end();
-
+        //lets call the done callback with the id of the picture
+        done('img'+clickNB+'.jpg');
       });
 
-
-    /*scanProcess.on('close', function(code,signal){
-      console.log("scan done");
-
-      var convertProcess =  spawn('convert', ['-quality','60', './raw/img'+imageIndex+'.tiff', './pictures/img'+imageIndex+'.jpg'])
-              
-      convertProcess.stderr.on('data', function(data){
-        console.log('' + data);
-      })
-
-      convertProcess.on('close', function(code,signal){
-        console.log("convert done");
-        console.log(arguments)
-        //scanned ended 
-        clickNB++;
-
-        cameraInUse = false;
-
-      });
-    });
-    */
 
 		return true;
 	}else{
