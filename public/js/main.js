@@ -5,7 +5,7 @@
 window.onload = function() {
  
     var messages = [];
-    var socket = io.connect('http://192.168.137.2:3000/');
+    var socket = io.connect('http://192.168.10.1:3000/');
     var snapButton = document.getElementById("snap");
     var content = document.getElementById("content");
     var status = document.getElementById("status");
@@ -21,15 +21,18 @@ window.onload = function() {
           }else if(data.status == "progress"){
             status.innerHTML = "Progress : " + data.progress;
             if( data.imagedata ){
-              console.log("received imagedata");
-              //update image preview
+              console.log("received imagedata " , data.imagedata);
+              //document.getElementById('display').setAttribute('src','data:image/jpeg;base64,'+data.imagedata);
+              jQuery("#content").append(
+                jQuery("img").attr({src:'data:image/jpeg;base64,'+data.imagedata})
+              );
             }
           }else if(data.status == "initializing"){
             console.log("scan initialized");
             status.innerHTML = "Scan initialized";
           }else if(data.status == "done"){
             console.log("scan terminated");
-            status.innerHTML = "";
+            status.innerHTML = "Connection established";
           }else if(data.status == "fail"){
             alert("something went wrong : \r\n " + data.message);
           }            

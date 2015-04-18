@@ -1,6 +1,7 @@
 var fs = require('fs');
 var mkdirp = require('mkdirp');
-var spawn = require('child_process').spawn;
+var child_process = require('child_process');
+var spawn = child_process.spawn;
 
 var cameraInUse = true;
 var clickNB = -1;
@@ -117,9 +118,32 @@ function scan(definition, progress, done){
             var progresspercentage = parseInt(matches[1]);
             if(progresspercentage >= progressIndex * progressStep){
               //consider trying to stream | convert the unfinished file every 10%
-              progress(progresspercentage, progressIndex * progressStep);
-              console.log("reached progress threshold")
-              progressIndex++;
+
+              var previewProcess  = spawn('sh',['-c','./do_preview.sh ./raw/img'+imageIndex+'.tiff '+ progresspercentage]);                                         
+
+              var buffers = [];
+
+              previewProcess.stdout.on('data',function(imagedata){
+                buffers.push(imagedata);
+              })
+
+              previewProcess.stderr.on('data',function(imagedata){
+                console.log("got error"+ imagedata);
+              })
+
+              previewProcess.stdout.on('end', function(){
+                progress(progresspercentage, (Buffer.concat(buffers)).toString('base64'));
+              })
+              
+              //previewProcess.on('close', function(code,signal){
+              //  progress(progresspercentage, (Buffer.concat(buffers)).toString('base64'));
+              //  console.log("reached progress threshold and conversion done");
+              //  console.log((Buffer.concat(buffers)).toString('base64'));
+              //})
+              
+
+              progressIndex++;       
+
             }else{
               progress(matches[1], null);
             }

@@ -89,7 +89,7 @@ io.sockets.on('connection', function (socket) {
           cameralogic.definitions.sd
           , function(progress, preview){
               console.log('progress : '+ progress);
-              socket.emit('status', { status : "progress", progress : progress, imagedata : preview } );
+              socket.emit('status', { status : "progress", progress : progress, imagedata : (preview ? preview.toString('base64') : null )} );
             }
           , function(imagename, preview){
               console.log('done : '+ imagename);
